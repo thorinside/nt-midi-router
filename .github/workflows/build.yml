@@ -1,0 +1,61 @@
+name: Build and Release NT MIDI Router Plugin
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install ARM toolchain
+        run: |
+          brew update
+          brew install --cask gcc-arm-embedded
+
+      - name: Verify ARM toolchain
+        run: arm-none-eabi-g++ --version
+
+      - name: Build plugin
+        run: |
+          make clean
+          make verify
+
+      - name: Upload hardware object
+        uses: actions/upload-artifact@v4
+        with:
+          name: nt_midi_router
+          path: plugins/nt_midi_router.o
+
+      - name: Prepare release archive
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p release/programs/plug-ins/nt_midi_router
+          cp plugins/nt_midi_router.o release/programs/plug-ins/nt_midi_router/
+          cd release
+          zip -r ../nt_midi_router-plugin.zip programs
+          cd ..
+          echo "Archive contents:"
+          unzip -l nt_midi_router-plugin.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: nt_midi_router-plugin.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

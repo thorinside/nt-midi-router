@@ -1,5 +1,7 @@
 build/
 plugins/
+release/
+*-plugin.zip
 *.dylib
 *.so
 *.dll
