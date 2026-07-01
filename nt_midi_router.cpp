@@ -214,7 +214,7 @@ static void step(_NT_algorithm*, float*, int) {
 }
 
 static const _NT_factory kFactory = {
-    .guid = NT_MULTICHAR('N', 'M', 'R', 't'),
+    .guid = NT_MULTICHAR('T', 'h', 'M', 'r'),
     .name = "NT MIDI Router",
     .description = "Duplicates and remaps MIDI channel messages",
     .numSpecifications = 0,
