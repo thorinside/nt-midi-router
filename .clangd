@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - -I./distingNT_API/include
+    - -I.
+    - -std=c++11
+    - -D__arm__
