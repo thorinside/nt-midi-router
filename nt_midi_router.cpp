@@ -17,6 +17,7 @@ enum {
     kMessageCcOnly,
     kMessageCcNotes,
     kMessageAllChannel,
+    kNumMessageTypes,
 };
 
 enum {
@@ -35,36 +36,65 @@ enum {
     kNumParams,
 };
 
-static const char* kOffOnStrings[] = { "Off", "On", NULL };
+enum {
+    kNumOffOnValues = 2,
+    kNumInputChannelValues = 17,
+    kNumOutputChannelValues = 18,
+};
 
-static const char* kInputChannelStrings[] = {
+template <typename T, size_t N>
+constexpr size_t arrayCount(const T (&)[N]) {
+    return N;
+}
+
+constexpr uint32_t fourCc(char a, char b, char c, char d) {
+    return (static_cast<uint32_t>(a) << 0) |
+           (static_cast<uint32_t>(b) << 8) |
+           (static_cast<uint32_t>(c) << 16) |
+           (static_cast<uint32_t>(d) << 24);
+}
+
+static char const * const kOffOnStrings[] = { "Off", "On" };
+
+static char const * const kInputChannelStrings[] = {
     "All", "1", "2", "3", "4", "5", "6", "7", "8",
-    "9", "10", "11", "12", "13", "14", "15", "16", NULL
+    "9", "10", "11", "12", "13", "14", "15", "16"
 };
 
-static const char* kOutputChannelStrings[] = {
+static char const * const kOutputChannelStrings[] = {
     "Off", "Same", "1", "2", "3", "4", "5", "6", "7", "8",
-    "9", "10", "11", "12", "13", "14", "15", "16", NULL
+    "9", "10", "11", "12", "13", "14", "15", "16"
 };
 
-static const char* kMessageTypeStrings[] = {
-    "CC only", "CC+notes", "All channel", NULL
+static char const * const kMessageTypeStrings[] = {
+    "CC only", "CC+notes", "All channel"
 };
+
+static_assert(arrayCount(kOffOnStrings) == kNumOffOnValues, "Off/On string table mismatch");
+static_assert(arrayCount(kInputChannelStrings) == kNumInputChannelValues, "Input channel string table mismatch");
+static_assert(arrayCount(kOutputChannelStrings) == kNumOutputChannelValues, "Output channel string table mismatch");
+static_assert(arrayCount(kMessageTypeStrings) == kNumMessageTypes, "Message type string table mismatch");
+
+constexpr _NT_parameter makeParameter(const char* name, int16_t min, int16_t max, int16_t def, uint8_t unit, char const * const * enumStrings) {
+    return { name, min, max, def, unit, 0, enumStrings };
+}
 
 static const _NT_parameter kParameters[] = {
-    { .name = "Enabled", .min = 0, .max = 1, .def = 1, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOffOnStrings },
-    { .name = "In ch", .min = 0, .max = 16, .def = 1, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kInputChannelStrings },
-    { .name = "Messages", .min = 0, .max = 2, .def = kMessageCcOnly, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kMessageTypeStrings },
-    { .name = "CC low", .min = 0, .max = 127, .def = 0, .unit = kNT_unitNone, .scaling = 0, .enumStrings = NULL },
-    { .name = "CC high", .min = 0, .max = 127, .def = 127, .unit = kNT_unitNone, .scaling = 0, .enumStrings = NULL },
-    { .name = "Out ch 1", .min = 0, .max = 17, .def = 3, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOutputChannelStrings },
-    { .name = "Out ch 2", .min = 0, .max = 17, .def = 4, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOutputChannelStrings },
-    { .name = "Thru ch", .min = 0, .max = 17, .def = 0, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOutputChannelStrings },
-    { .name = "Breakout", .min = 0, .max = 1, .def = 1, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOffOnStrings },
-    { .name = "USB", .min = 0, .max = 1, .def = 0, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOffOnStrings },
-    { .name = "Select Bus", .min = 0, .max = 1, .def = 0, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOffOnStrings },
-    { .name = "Internal", .min = 0, .max = 1, .def = 0, .unit = kNT_unitEnum, .scaling = 0, .enumStrings = kOffOnStrings },
+    makeParameter("Enabled", 0, 1, 1, kNT_unitEnum, kOffOnStrings),
+    makeParameter("In ch", 0, 16, 1, kNT_unitEnum, kInputChannelStrings),
+    makeParameter("Messages", 0, 2, kMessageCcOnly, kNT_unitEnum, kMessageTypeStrings),
+    makeParameter("CC low", 0, 127, 0, kNT_unitNone, nullptr),
+    makeParameter("CC high", 0, 127, 127, kNT_unitNone, nullptr),
+    makeParameter("Out ch 1", 0, 17, 3, kNT_unitEnum, kOutputChannelStrings),
+    makeParameter("Out ch 2", 0, 17, 4, kNT_unitEnum, kOutputChannelStrings),
+    makeParameter("Thru ch", 0, 17, 0, kNT_unitEnum, kOutputChannelStrings),
+    makeParameter("Breakout", 0, 1, 1, kNT_unitEnum, kOffOnStrings),
+    makeParameter("USB", 0, 1, 0, kNT_unitEnum, kOffOnStrings),
+    makeParameter("Select Bus", 0, 1, 0, kNT_unitEnum, kOffOnStrings),
+    makeParameter("Internal", 0, 1, 0, kNT_unitEnum, kOffOnStrings),
 };
+
+static_assert(arrayCount(kParameters) == kNumParams, "Parameter table mismatch");
 
 static const uint8_t kFilterPage[] = {
     kParamEnabled, kParamInputChannel, kParamMessageType, kParamCcLow, kParamCcHigh
@@ -78,24 +108,34 @@ static const uint8_t kDestinationsPage[] = {
     kParamToBreakout, kParamToUsb, kParamToSelectBus, kParamToInternal
 };
 
+constexpr _NT_parameterPage makePage(const char* name, uint8_t numParams, const uint8_t* params) {
+    return { name, numParams, 0, { 0, 0 }, params };
+}
+
 static const _NT_parameterPage kPages[] = {
-    { .name = "Filter", .numParams = ARRAY_SIZE(kFilterPage), .group = 0, .unused = { 0, 0 }, .params = kFilterPage },
-    { .name = "Outputs", .numParams = ARRAY_SIZE(kOutputsPage), .group = 0, .unused = { 0, 0 }, .params = kOutputsPage },
-    { .name = "Destinations", .numParams = ARRAY_SIZE(kDestinationsPage), .group = 0, .unused = { 0, 0 }, .params = kDestinationsPage },
+    makePage("Filter", static_cast<uint8_t>(arrayCount(kFilterPage)), kFilterPage),
+    makePage("Outputs", static_cast<uint8_t>(arrayCount(kOutputsPage)), kOutputsPage),
+    makePage("Destinations", static_cast<uint8_t>(arrayCount(kDestinationsPage)), kDestinationsPage),
 };
 
 static const _NT_parameterPages kParameterPages = {
-    .numPages = ARRAY_SIZE(kPages),
-    .pages = kPages,
+    arrayCount(kPages),
+    kPages,
 };
 
 struct _midiRouterAlgorithm : public _NT_algorithm {
-    _midiRouterAlgorithm() : routedCount(0) {}
+    _midiRouterAlgorithm() : routedCount(0) {
+        parameters = nullptr;
+        parameterPages = nullptr;
+        vIncludingCommon = nullptr;
+        v = nullptr;
+    }
+
     uint32_t routedCount;
 };
 
 static void calculateRequirements(_NT_algorithmRequirements& req, const int32_t*) {
-    req.numParameters = ARRAY_SIZE(kParameters);
+    req.numParameters = arrayCount(kParameters);
     req.sram = sizeof(_midiRouterAlgorithm);
     req.dram = 0;
     req.dtc = 0;
@@ -159,7 +199,7 @@ static bool ccAllowed(const _midiRouterAlgorithm* alg, uint8_t cc) {
 }
 
 static void sendChannelMessage(uint32_t destinations, uint8_t status, int channel, uint8_t data1, uint8_t data2) {
-    uint8_t byte0 = (uint8_t)(status | (channel & 0x0f));
+    uint8_t byte0 = static_cast<uint8_t>(status | (channel & 0x0f));
 
     if (status == 0xc0 || status == 0xd0)
         NT_sendMidi2ByteMessage(destinations, byte0, data1);
@@ -177,7 +217,7 @@ static void sendIfUnique(uint32_t destinations, uint8_t status, int channel, uin
 }
 
 static void midiMessage(_NT_algorithm* self, uint8_t byte0, uint8_t byte1, uint8_t byte2) {
-    _midiRouterAlgorithm* alg = (_midiRouterAlgorithm*)self;
+    _midiRouterAlgorithm* alg = static_cast<_midiRouterAlgorithm*>(self);
 
     if (!alg->v[kParamEnabled])
         return;
@@ -214,29 +254,29 @@ static void step(_NT_algorithm*, float*, int) {
 }
 
 static const _NT_factory kFactory = {
-    .guid = NT_MULTICHAR('T', 'h', 'M', 'r'),
-    .name = "NT MIDI Router",
-    .description = "Duplicates and remaps MIDI channel messages",
-    .numSpecifications = 0,
-    .specifications = NULL,
-    .calculateStaticRequirements = NULL,
-    .initialise = NULL,
-    .calculateRequirements = calculateRequirements,
-    .construct = construct,
-    .parameterChanged = NULL,
-    .step = step,
-    .draw = NULL,
-    .midiRealtime = NULL,
-    .midiMessage = midiMessage,
-    .tags = kNT_tagUtility,
-    .hasCustomUi = NULL,
-    .customUi = NULL,
-    .setupUi = NULL,
-    .serialise = NULL,
-    .deserialise = NULL,
-    .midiSysEx = NULL,
-    .parameterUiPrefix = NULL,
-    .parameterString = NULL,
+    fourCc('T', 'h', 'M', 'r'),
+    "NT MIDI Router",
+    "Duplicates and remaps MIDI channel messages",
+    0,
+    nullptr,
+    nullptr,
+    nullptr,
+    calculateRequirements,
+    construct,
+    nullptr,
+    step,
+    nullptr,
+    nullptr,
+    midiMessage,
+    kNT_tagUtility,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
 };
 
 } // namespace
@@ -248,7 +288,7 @@ extern "C" uintptr_t pluginEntry(_NT_selector selector, uint32_t data) {
     case kNT_selector_numFactories:
         return 1;
     case kNT_selector_factoryInfo:
-        return (uintptr_t)((data == 0) ? &kFactory : NULL);
+        return data == 0 ? reinterpret_cast<uintptr_t>(&kFactory) : 0;
     }
 
     return 0;
