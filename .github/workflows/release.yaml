@@ -2,24 +2,21 @@ name: Build and Release NT MIDI Router Plugin
 
 on:
   push:
-    branches:
-      - "**"
     tags:
       - "v*"
-  pull_request:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-release:
     runs-on: macos-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true
           fetch-depth: 0
 
       - name: Install ARM toolchain
@@ -27,35 +24,29 @@ jobs:
           brew update
           brew install --cask gcc-arm-embedded
 
-      - name: Verify ARM toolchain
-        run: arm-none-eabi-g++ --version
+      - name: Verify installation
+        run: |
+          arm-none-eabi-g++ --version
 
       - name: Build plugin
         run: |
           make clean
-          make verify
-
-      - name: Upload hardware object
-        uses: actions/upload-artifact@v4
-        with:
-          name: nt_midi_router
-          path: plugins/nt_midi_router.o
+          make hardware
 
       - name: Prepare release archive
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          mkdir -p release/programs/plug-ins/nt_midi_router
-          cp plugins/nt_midi_router.o release/programs/plug-ins/nt_midi_router/
+          mkdir -p release/programs/plug-ins
+          cp plugins/nt_midi_router.o release/programs/plug-ins/
           cd release
           zip -r ../nt_midi_router-plugin.zip programs
           cd ..
-          echo "Archive contents:"
+          echo "Created zip contents:"
           unzip -l nt_midi_router-plugin.zip
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           files: nt_midi_router-plugin.zip
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
