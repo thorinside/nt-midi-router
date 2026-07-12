@@ -88,9 +88,16 @@ hardware:
 test:
 	@$(MAKE) TARGET=test
 
+unit:
+	@mkdir -p build
+	clang++ -std=c++11 -Wall -Wextra -Wno-c99-designator -Wno-reorder-init-list \
+		-I. -I$(DNT_API)/include -o build/nt_midi_router_test tests/nt_midi_router_test.cpp
+	@build/nt_midi_router_test
+
 both: hardware test
 
 verify:
+	@$(MAKE) unit
 	@$(MAKE) TARGET=hardware
 	@$(MAKE) TARGET=test
 	@$(MAKE) check TARGET=hardware
@@ -104,4 +111,4 @@ size: $(OUTPUT)
 clean:
 	rm -rf $(BUILD_DIR) $(OUTPUT_DIR)
 
-.PHONY: all hardware test both verify check size clean
+.PHONY: all hardware test unit both verify check size clean

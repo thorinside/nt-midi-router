@@ -14,7 +14,8 @@ The default parameters implement the requested workflow:
 Filter:
 
 - `Enabled`: turns routing on or off
-- `In ch`: `All` or a specific input MIDI channel
+- `In ch`: `All` or the first input MIDI channel to route
+- `In ch end`: `Same` for one channel, or the last channel in an inclusive range
 - `Messages`: `CC only`, `CC+notes`, or `All channel`
 - `CC low` / `CC high`: inclusive CC range for CC messages
 
@@ -32,6 +33,13 @@ Destinations:
 - `Internal`
 
 Duplicate output channels are suppressed, so choosing the same channel twice only sends one copy.
+
+To use a controller for an external machine on channels 1-8 while reserving
+channels 9-16 for disting NT mappings, set `In ch` to `1`, `In ch end` to `8`,
+and `Thru ch` to `Same`. Messages on channels 9-16 still reach the NT's own
+MIDI mappings, but this plugin will not retransmit them. Leave the `Internal`
+destination off unless the routed copies are intentionally meant to feed other
+algorithms or mappings inside the NT.
 
 ## Important Input-Port Note
 

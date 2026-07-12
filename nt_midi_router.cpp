@@ -33,6 +33,8 @@ enum {
     kParamToUsb,
     kParamToSelectBus,
     kParamToInternal,
+    // Keep new parameters at the end to preserve released preset indices.
+    kParamInputChannelEnd,
     kNumParams,
 };
 
@@ -66,6 +68,11 @@ static char const * const kOutputChannelStrings[] = {
     "9", "10", "11", "12", "13", "14", "15", "16"
 };
 
+static char const * const kInputChannelEndStrings[] = {
+    "Same", "1", "2", "3", "4", "5", "6", "7", "8",
+    "9", "10", "11", "12", "13", "14", "15", "16"
+};
+
 static char const * const kMessageTypeStrings[] = {
     "CC only", "CC+notes", "All channel"
 };
@@ -73,6 +80,7 @@ static char const * const kMessageTypeStrings[] = {
 static_assert(arrayCount(kOffOnStrings) == kNumOffOnValues, "Off/On string table mismatch");
 static_assert(arrayCount(kInputChannelStrings) == kNumInputChannelValues, "Input channel string table mismatch");
 static_assert(arrayCount(kOutputChannelStrings) == kNumOutputChannelValues, "Output channel string table mismatch");
+static_assert(arrayCount(kInputChannelEndStrings) == kNumInputChannelValues, "Input channel end string table mismatch");
 static_assert(arrayCount(kMessageTypeStrings) == kNumMessageTypes, "Message type string table mismatch");
 
 constexpr _NT_parameter makeParameter(const char* name, int16_t min, int16_t max, int16_t def, uint8_t unit, char const * const * enumStrings) {
@@ -92,12 +100,14 @@ static const _NT_parameter kParameters[] = {
     makeParameter("USB", 0, 1, 0, kNT_unitEnum, kOffOnStrings),
     makeParameter("Select Bus", 0, 1, 0, kNT_unitEnum, kOffOnStrings),
     makeParameter("Internal", 0, 1, 0, kNT_unitEnum, kOffOnStrings),
+    makeParameter("In ch end", 0, 16, 0, kNT_unitEnum, kInputChannelEndStrings),
 };
 
 static_assert(arrayCount(kParameters) == kNumParams, "Parameter table mismatch");
 
 static const uint8_t kFilterPage[] = {
-    kParamEnabled, kParamInputChannel, kParamMessageType, kParamCcLow, kParamCcHigh
+    kParamEnabled, kParamInputChannel, kParamInputChannelEnd,
+    kParamMessageType, kParamCcLow, kParamCcHigh
 };
 
 static const uint8_t kOutputsPage[] = {
@@ -198,6 +208,25 @@ static bool ccAllowed(const _midiRouterAlgorithm* alg, uint8_t cc) {
     return cc >= low && cc <= high;
 }
 
+static bool inputChannelAllowed(const _midiRouterAlgorithm* alg, int inputChannel) {
+    int first = alg->v[kParamInputChannel];
+    if (first == 0)
+        return true;
+
+    int last = alg->v[kParamInputChannelEnd];
+    if (last == 0)
+        last = first;
+
+    if (first > last) {
+        int tmp = first;
+        first = last;
+        last = tmp;
+    }
+
+    // Parameter channels are 1-based; MIDI status-byte channels are 0-based.
+    return inputChannel >= first - 1 && inputChannel <= last - 1;
+}
+
 static void sendChannelMessage(uint32_t destinations, uint8_t status, int channel, uint8_t data1, uint8_t data2) {
     uint8_t byte0 = static_cast<uint8_t>(status | (channel & 0x0f));
 
@@ -224,9 +253,7 @@ static void midiMessage(_NT_algorithm* self, uint8_t byte0, uint8_t byte1, uint8
 
     uint8_t status = byte0 & 0xf0;
     int inputChannel = byte0 & 0x0f;
-    int selectedInputChannel = alg->v[kParamInputChannel];
-
-    if (selectedInputChannel > 0 && inputChannel != selectedInputChannel - 1)
+    if (!inputChannelAllowed(alg, inputChannel))
         return;
 
     if (!messageTypeAllowed(alg->v[kParamMessageType], status))
